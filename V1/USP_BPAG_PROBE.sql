@@ -1,0 +1,41 @@
+CREATE PROCEDURE [dbo].[USP_BPAG_PROBE] (@PREVENDA NUMERIC(15))        
+AS        
+
+DECLARE @XML    XML
+DECLARE @ESTADO NUMERIC(15)
+DECLARE @ID     NUMERIC(15)
+
+SET @XML = (
+    '<probe>
+        <merch_ref>' + convert(varchar(15), @PREVENDA) + '</merch_ref>
+     </probe>' )
+
+INSERT INTO PREVENDAS_BPAG_PROBE (
+       PREVENDA	 ,   
+       DATA_HORA,	    
+       XML_ENVIO )
+values(@PREVENDA,
+       GETDATE(),
+       @XML)
+
+SET @ID = SCOPE_IDENTITY()
+
+SELECT @ESTADO = STATUS_FALHA_CONEXAO
+ FROM PARAMETROS_BPAG A WITH(NOLOCK)
+
+INSERT INTO TELEVENDAS_ESTADO_COMANDAS_LOG (
+       REG_MASTER_ORIGEM,
+       ESTADO,
+       DATA_HORA,
+       PREVENDA,
+       PROCESSO,
+       RESPONSAVEL,
+       OBSERVACAO )
+SELECT @ID,
+       @ESTADO,
+       GETDATE(),
+       @PREVENDA,
+       'CONEXAO',
+       'BPAG',
+       'USP_BPAG_PROBE'
+GO
