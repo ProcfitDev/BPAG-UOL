@@ -12,6 +12,22 @@ A camada de integração foi desenvolvida fortemente na base de dados para centr
 * **Procedimentos Principais:** * `sp_GerarAuthorizationUOL`: Gera o cabeçalho final de autorização a ser injetado no request.
     * `sp_GerarPayloadPedidoV3`: Extrai os dados das tabelas de vendas e formata o JSON do pedido.
 
+## ⏪ Legado (Versão V1)
+O diretório `V1` contém a primeira versão da integração. Ela era baseada no envio e recebimento de payloads no formato **XML**. Abaixo um resumo das responsabilidades das Stored Procedures mantidas por histórico:
+
+* **Pagamento / Autorização:**
+  * `USP_BPAG_PAYORDER.sql`: Coletava dados do pedido (impostos, fretes, descontos) e montava o XML para solicitação de autorização.
+  * `USP_BPAG_PAYORDER_RETORNO.sql` (e variações): Lia o XML retornado pelo gateway para atualizar o status do pedido no banco de dados.
+* **Captura:**
+  * `USP_BPAG_CAPTURE.sql` (e variações `_RETORNO`, `_PARTIAL`, `_TOTAL`): Confirmava o pagamento junto à operadora após o faturamento/envio, suportando capturas totais ou parciais.
+* **Cancelamento e Estorno:**
+  * `USP_BPAG_CANCEL.sql` (e variações): Montava o XML para cancelar a transação ou estornar limites caso a análise de risco falhasse ou o cliente desistisse.
+* **Sincronização e Consulta (`PROBE`):**
+  * `USP_BPAG_PROBE.sql` e `USP_BPAG_PENDENTES...`: Consultavam o gateway ativamente para conciliar transações que ficaram "pendentes" (ex: falhas de rede), evitando dessincronização de status.
+* **Monitoramento e Utilitários:**
+  * `USP_BPAG_PREAUTORIZACAO_MONITOR_EMAIL.sql`: Disparava alertas de pedidos travados na pré-autorização.
+  * `USP_RETORNA_DADOS_CARTAO_BPAG.sql`: Retornava os dados mascarados para auditoria interna.
+
 ## 🔐 Autenticação e Credenciais (Ambiente Sandbox)
 Atualmente, a API exige a assinatura via cabeçalho `Authorization`. 
 > ⚠️ **Nota:** Está previsto no roadmap da BPAG a atualização para o padrão OAuth 2.0. Quando disponibilizado, o módulo de autenticação deverá ser refatorado.
