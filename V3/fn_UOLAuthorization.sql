@@ -1,5 +1,3 @@
---4
-
 CREATE OR ALTER FUNCTION dbo.fn_UOLAuthorization
 (
       @AccessId VARCHAR(200)

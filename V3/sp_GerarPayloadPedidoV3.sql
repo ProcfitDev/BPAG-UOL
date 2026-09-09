@@ -84,6 +84,5 @@ BEGIN
         DateHeader = @DateHeader,
         MerchantHeader = @Merchant,
         AccountHeader = @Account
-
 END
 GO

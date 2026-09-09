@@ -1,4 +1,3 @@
---5 
 CREATE OR ALTER PROCEDURE dbo.sp_GerarAuthorizationUOL
 (
       @AccessId VARCHAR(200)
@@ -30,7 +29,3 @@ BEGIN
 
 END;
 GO
-
-
-
- 
