@@ -1,0 +1,14 @@
+1. URL base de homologação.
+https://sandbox-psp.bpag.com.br
+
+2. Merchant ID.
+ultrafarma-hml
+
+3. Account ID.
+ultrafarma-hml
+
+4. Secret Key utilizada para geração da assinatura.
+PNMD7f2PjkGXntUXrYhGcOvBJJACsOSKPIdcJTPbHn0=
+
+5 e 6. Public Key / Access Key/ OnBehalfOfAccessId
+c23ad060dc0aa175d64c8731296486a7

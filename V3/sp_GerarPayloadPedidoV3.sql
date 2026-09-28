@@ -1,88 +1,93 @@
-CREATE OR ALTER PROCEDURE dbo.sp_GerarPayloadPedidoV3
-(
-    @PedidoID INT
-)
-AS
+
+/*
+    Criação do Pedido: Evolução da USP_BPAG_PAYORDER
+    Essa procedure substitui a construção 
+    do FOR XML PATH pelo FOR JSON PATH. 
+    Ela também gera o cabeçalho de autenticação e insere na fila.
+*/
+CREATE OR ALTER PROCEDURE [dbo].[sp_GerarPayloadPedidoV3] (
+    @PREVENDA NUMERIC(15)
+)          
+AS  
 BEGIN
-    SET NOCOUNT ON
+    SET NOCOUNT ON;
 
-    -- Credenciais (Sandbox BPAG)
-    DECLARE @Merchant VARCHAR(100) = 'ultrafarma-hml'
-    DECLARE @Account VARCHAR(100) = 'ultrafarma-hml'
-    DECLARE @AccessId VARCHAR(200) = 'c23ad060dc0aa175d64c8731296486a7'
-    DECLARE @SecretKeyBase64 VARCHAR(MAX) = 'PNMD7f2PjkGXntUXrYhGcOvBJJACsOSKPIdcJTPbHn0='
+    DECLARE @TAXA NUMERIC(15,2);
+    DECLARE @payment_method VARCHAR(60);
+    DECLARE @cc_brand VARCHAR(60);
+    DECLARE @digito_ccv INT;
     
-    DECLARE @HttpVerb VARCHAR(20) = 'POST'
-    DECLARE @PathInfo VARCHAR(MAX) = '/upbc-service-fe/v1/order/purchase'
+    -- Busca taxa
+    SELECT @TAXA = ISNULL(TAXA, 0) FROM PDV_PREVENDAS WITH(NOLOCK) WHERE PREVENDA = @PREVENDA;
     
-    -- Formato de data
-    DECLARE @DateHeader VARCHAR(100) = FORMAT(GETUTCDATE(), 'ddd, dd MMM yyyy HH:mm:ss \G\M\T', 'en-US')
-    
-    DECLARE @HeaderAuthorization VARCHAR(MAX)
-    DECLARE @PayloadJSON NVARCHAR(MAX)
+    -- Mapeamento da adquirente (Getnet na V3 em vez de Cielo/Redecard)
+    SELECT 
+        @payment_method = 'GETNET', 
+        @cc_brand = LOWER(B.DESCRICAO),
+        @digito_ccv = ISNULL(B.NUMERO_DIGITOS_CCV, 3)
+    FROM PDV_PREVENDAS A WITH(NOLOCK)        
+    INNER JOIN TELEVENDAS_PARAMS_CARTOES_PARCELAMENTO B WITH(NOLOCK) 
+        ON B.NUMERO_CARTAO = SUBSTRING(CONVERT(VARCHAR, A.NCARTAO), 1, B.NUMERO_DIGITOS_VERIFICAR)        
+    WHERE A.PREVENDA = @PREVENDA;
 
-    -- Gerar a assinatura consumindo a função já criada
-    SET @HeaderAuthorization = dbo.fn_UOLAuthorization(
-        @AccessId, @SecretKeyBase64, @HttpVerb, '', '', @DateHeader, '', @PathInfo
-    )
-
-    -- Gerar o Payload JSON
-    SET @PayloadJSON = (
+    -- 1. Geração do Payload em JSON (Substitui o @pacote XML)
+    DECLARE @PayloadJSON NVARCHAR(MAX) = (
         SELECT 
-            amount = 1000, -- R$ 10,00 (enviado em centavos)
-            reference = CAST(@PedidoID AS VARCHAR(50)),
+            -- Calcula o valor total em centavos, considerando taxa e descontos
+            reference = CAST(A.PREVENDA AS VARCHAR(50)),
             requestDate = FORMAT(GETUTCDATE(), 'yyyy-MM-ddTHH:mm:ssZ'),
             currency = 'BRL',
             
-            -- Detalhes do Cliente
+            -- Dados do Cliente (Substitui o bloco @cliente XML)
             details = (
                 SELECT 
                     customers = (
                         SELECT 
-                            id = '12345',
-                            firstName = 'Teste',
-                            lastName = 'Homologacao',
-                            document = '80187630623',
-                            documentType = 'CPF',
-                            email = 'teste@procfit.com'
+                            id = CAST(A.CLIENTE AS VARCHAR(50)),
+                            firstName = SUBSTRING(E.NOME, 1, CASE WHEN CHARINDEX(' ', E.NOME)-1 <= 0 THEN 30 ELSE CHARINDEX(' ', E.NOME)-1 END),
+                            document = E.INSCRICAO_FEDERAL,
+                            documentType = CASE WHEN PJ.ENTIDADE IS NULL THEN 'CPF' ELSE 'CNPJ' END,
+                            email = ISNULL(REPLACE(EM.EMAIL, 0x1F, ''), '')
                         FOR JSON PATH
                     )
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
             ),
-
-            -- Array de Pagamentos
+            
+            -- Dados do Pagamento (Substitui o bloco @pagamentos XML)
             payments = (
                 SELECT 
-                    amount = 1000,
+                    amount = CONVERT(INT, A.CARTAO * 100),
                     paymentMethod = (
                         SELECT 
                             paymentType = 'CARD',
                             paymentSubtype = 'CREDIT',
-                            financialInstitution = 'GETNET', 
-                            processor = 'GETNET'
+                            financialInstitution = @payment_method,
+                            processor = @payment_method
                         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
                     ),
                     creditCard = (
                         SELECT 
-                            brand = 'mastercard',
-                            number = '5447318879391031', 
-                            cvv = '528',
-                            expDate = '2029-02', -- ATENÇÃO: Data de vencimento sempre no futuro
-                            holder = 'TESTE HOMOLOGACAO',
-                            installments = 1
+                            brand = @cc_brand,
+                            number = A.NCARTAO, -- Em prod, evite gravar/trafegar aberto se não for PCI
+                            cvv = A.CCV,
+                            expDate = CONCAT('20', SUBSTRING(A.VALIDADE, 4, 2), '-', SUBSTRING(A.VALIDADE, 1, 2)),
+                            installments = A.PARCELAS
                         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
                     )
                 FOR JSON PATH
             )
+        FROM PDV_PREVENDAS A WITH(NOLOCK)
+        INNER JOIN ENTIDADES E WITH(NOLOCK) ON E.ENTIDADE = A.CLIENTE
+        LEFT JOIN EMAIL EM WITH(NOLOCK) ON EM.ENTIDADE = A.CLIENTE
+        LEFT JOIN PESSOAS_JURIDICAS PJ WITH(NOLOCK) ON PJ.ENTIDADE = A.CLIENTE
+        WHERE A.PREVENDA = @PREVENDA
         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
-    )
+    );
 
-    -- Retorno para a aplicação consumir
-    SELECT 
-        RequestBody = @PayloadJSON, 
-        AuthorizationHeader = @HeaderAuthorization, 
-        DateHeader = @DateHeader,
-        MerchantHeader = @Merchant,
-        AccountHeader = @Account
+    -- 2. Insere na fila para o ERP/Checkout capturar (Substitui o insert do @pacote)
+    IF (SELECT COUNT(1) FROM PREVENDAS_BPAG_PAYORDER WITH(NOLOCK) WHERE PREVENDA = @PREVENDA AND ISNULL(STATUS_WS,-1) = 0) = 0
+    BEGIN
+        INSERT INTO PREVENDAS_BPAG_PAYORDER (PREVENDA, XML_ENVIO) -- Pode renomear a coluna para PAYLOAD_ENVIO no futuro
+        VALUES (@PREVENDA, @PayloadJSON);
+    END
 END
-GO

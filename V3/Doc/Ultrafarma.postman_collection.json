@@ -1,0 +1,839 @@
+{
+  "info": {
+    "_postman_id": "0dea8f98-f857-4b62-9090-6a1e427c7941",
+    "name": "Ultrafarma",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "10629318"
+  },
+  "item": [
+    {
+      "name": "Getnet authorize",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);",
+              "var canonical = request.method;",
+              "",
+              "if(!request.headers[\"content-type\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "if(!request.headers[\"content-md5\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "",
+              "for(var h in request.headers)  {",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {",
+              "        canonical += \"\\n\" + request.headers[h];",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];",
+              "    }",
+              "}",
+              "",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);",
+              "",
+              "canonical += \"\\n\" + urlParts[2];",
+              "",
+              "console.log(canonical);",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "console.log(hmac);",
+              "",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);",
+              "",
+              "console.log(base64);",
+              "",
+              "pm.environment.set(\"gibraltar-auth\", ",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");",
+              "",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 May 2021 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          },
+          {
+            "key": "",
+            "value": "",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"amount\": 100,\r\n  \"channel\": \"nacional\",\r\n  \"currency\": \"BRL\",\r\n  \"reference\": \"Teste\",\r\n  \"requestDate\": \"2023-01-23T17:08:18Z\",\r\n  \"details\": {\r\n    \"customers\": [\r\n      {\r\n        \r\n        \"document\": \"ABC1236\",\r\n        \"documentType\": \"eita\",\r\n        \"email\": \"aprovar@teste.com.br\",\r\n        \"firstName\": \"cartao\",\r\n        \"lastName\": \"teste\",\r\n        \"ipAddress\": \"200.201.8.182\",\r\n        \"id\": \"aprovar@teste.com.br\",\r\n        \"phones\": [\r\n          {\r\n            \"type\": \"MOBILE\",\r\n            \"countryCode\": \"55\",\r\n            \"areaCode\": \"64\",\r\n            \"phone\": \"989283223\"\r\n          }\r\n        ],\r\n        \"addresses\": [\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"CUSTOMER\"\r\n          },\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"BILLING\"\r\n          },\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"SHIPPING\"\r\n          }\r\n        ]\r\n      }\r\n    ],\r\n    \"extra\": {\r\n      \"vip\": false\r\n    },\r\n  \r\n    \"products\": [\r\n      {\r\n        \"amount\": 100,\r\n        \"name\": \"Molho de tomate\",\r\n        \"quantity\": 3,\r\n        \"cateSPrization\": \"201\",\r\n        \"description\": \"500g\",\r\n        \"id\": \"20500\",\r\n        \"skuCode\": \"20500\",\r\n        \"unitAmount\": 15000\r\n      }\r\n    ]\r\n  },\r\n  \"payments\": [\r\n    {\r\n      \"amount\": 100,\r\n      \"creditCard\": {\r\n        \"brand\": \"visa\",\r\n        \"cvv\": \"123\",\r\n        \"expDate\": \"2030-04\",\r\n        \"holder\": \"CARTAO TESTE\",\r\n        \"installments\": 1,\r\n        \"number\": \"4111111111111111\"\r\n      },\r\n      \"paymentMethod\": {\r\n        \"paymentType\": \"CARD\",\r\n        \"paymentSubtype\": \"CREDIT\",\r\n        \"financialInstitution\": \"SANTANDER\",\r\n        \"processor\": \"GETNET\",\r\n        \"technology\": \"WEBSERVICES\"\r\n      }\r\n    }\r\n  ]\r\n}"
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/authorize",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "authorize"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Getnet purchase - venda direta",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);",
+              "var canonical = request.method;",
+              "",
+              "if(!request.headers[\"content-type\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "if(!request.headers[\"content-md5\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "",
+              "for(var h in request.headers)  {",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {",
+              "        canonical += \"\\n\" + request.headers[h];",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];",
+              "    }",
+              "}",
+              "",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);",
+              "",
+              "canonical += \"\\n\" + urlParts[2];",
+              "",
+              "console.log(canonical);",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "console.log(hmac);",
+              "",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);",
+              "",
+              "console.log(base64);",
+              "",
+              "pm.environment.set(\"gibraltar-auth\", ",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");",
+              "",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 May 2021 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          },
+          {
+            "key": "",
+            "value": "",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"amount\": 100,\r\n  \"channel\": \"nacional\",\r\n  \"currency\": \"BRL\",\r\n  \"reference\": \"Teste\",\r\n  \"requestDate\": \"2023-01-23T17:08:18Z\",\r\n  \"details\": {\r\n    \"customers\": [\r\n      {\r\n        \r\n        \"document\": \"ABC1236\",\r\n        \"documentType\": \"eita\",\r\n        \"email\": \"aprovar@teste.com.br\",\r\n        \"firstName\": \"cartao\",\r\n        \"lastName\": \"teste\",\r\n        \"ipAddress\": \"200.201.8.182\",\r\n        \"id\": \"aprovar@teste.com.br\",\r\n        \"phones\": [\r\n          {\r\n            \"type\": \"MOBILE\",\r\n            \"countryCode\": \"55\",\r\n            \"areaCode\": \"64\",\r\n            \"phone\": \"989283223\"\r\n          }\r\n        ],\r\n        \"addresses\": [\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"CUSTOMER\"\r\n          },\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"BILLING\"\r\n          },\r\n          {\r\n            \"street\": \"Rua Barao de limeira\",\r\n            \"number\": \"458\",\r\n            \"district\": \"Sao paulo\",\r\n            \"complement\": \"Sao paulo\",\r\n            \"zipCode\": \"75680102\",\r\n            \"city\": \"Sao paulo\",\r\n            \"state\": \"SP\",\r\n            \"country\": \"BRA\",\r\n            \"type\": \"SHIPPING\"\r\n          }\r\n        ]\r\n      }\r\n    ],\r\n    \"extra\": {\r\n      \"vip\": false\r\n    },\r\n  \r\n    \"products\": [\r\n      {\r\n        \"amount\": 100,\r\n        \"name\": \"Molho de tomate\",\r\n        \"quantity\": 3,\r\n        \"cateSPrization\": \"201\",\r\n        \"description\": \"500g\",\r\n        \"id\": \"20500\",\r\n        \"skuCode\": \"20500\",\r\n        \"unitAmount\": 15000\r\n      }\r\n    ]\r\n  },\r\n  \"payments\": [\r\n    {\r\n      \"amount\": 100,\r\n      \"creditCard\": {\r\n        \"brand\": \"visa\",\r\n        \"cvv\": \"123\",\r\n        \"expDate\": \"2030-04\",\r\n        \"holder\": \"CARTAO TESTE\",\r\n        \"installments\": 1,\r\n        \"number\": \"4111111111111111\"\r\n      },\r\n      \"paymentMethod\": {\r\n        \"paymentType\": \"CARD\",\r\n        \"paymentSubtype\": \"CREDIT\",\r\n        \"financialInstitution\": \"SANTANDER\",\r\n        \"processor\": \"GETNET\",\r\n        \"technology\": \"WEBSERVICES\"\r\n      }\r\n    }\r\n  ]\r\n}"
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/purchase",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "purchase"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fe - Create Token",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);",
+              "var canonical = request.method;",
+              "",
+              "if(!request.headers[\"content-type\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "if(!request.headers[\"content-md5\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "",
+              "for(var h in request.headers)  {",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {",
+              "        canonical += \"\\n\" + request.headers[h];",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];",
+              "    }",
+              "}",
+              "",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);",
+              "",
+              "canonical += \"\\n\" + urlParts[2];",
+              "",
+              "console.log(canonical);",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "//console.log(hmac);",
+              "",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);",
+              "",
+              "//console.log(base64);",
+              "",
+              "pm.environment.set(\"gibraltar-auth\", \"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");",
+              "",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 Nov 2016 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\t\"customerId\" : \"1455662\",\n\t\"alias\" : \"testeCompass\",\n\t\"number\": \"41111111111111\",\n\t\"brand\": \"mastercard\",\n\t\"expDate\": \"2028-03\",\n\t\"holder\": \"Teste tESTE\"\n}"
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/token",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fe - Capture Order Parcial",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);\r",
+              "var canonical = request.method;\r",
+              "\r",
+              "if(!request.headers[\"content-type\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "if(!request.headers[\"content-md5\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "\r",
+              "for(var h in request.headers)  {\r",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {\r",
+              "        canonical += \"\\n\" + request.headers[h];\r",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){\r",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];\r",
+              "    }\r",
+              "}\r",
+              "\r",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);\r",
+              "\r",
+              "canonical += \"\\n\" + urlParts[2];\r",
+              "\r",
+              "console.log(canonical);\r",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "console.log(hmac);\r",
+              "\r",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);\r",
+              "\r",
+              "console.log(base64);\r",
+              "\r",
+              "pm.environment.set(\"gibraltar-auth\", \r",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");\r",
+              "\r",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 May 2021 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\"amount\": \"100\"\r\n}"
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/3dab4e85-4ca8-46bb-a1c8-b5d2b38ae705/partialCapture",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "3dab4e85-4ca8-46bb-a1c8-b5d2b38ae705",
+            "partialCapture"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Cancel Parcial",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);\r",
+              "var canonical = request.method;\r",
+              "\r",
+              "if(!request.headers[\"content-type\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "if(!request.headers[\"content-md5\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "\r",
+              "for(var h in request.headers)  {\r",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {\r",
+              "        canonical += \"\\n\" + request.headers[h];\r",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){\r",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];\r",
+              "    }\r",
+              "}\r",
+              "\r",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);\r",
+              "\r",
+              "canonical += \"\\n\" + urlParts[2];\r",
+              "\r",
+              "console.log(canonical);\r",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "console.log(hmac);\r",
+              "\r",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);\r",
+              "\r",
+              "console.log(base64);\r",
+              "\r",
+              "pm.environment.set(\"gibraltar-auth\", \r",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");\r",
+              "\r",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 May 2021 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\"amount\": \"500\"\r\n}"
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/e33372cd-5bee-4fb6-8fcf-a609bd57e46a/void",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "e33372cd-5bee-4fb6-8fcf-a609bd57e46a",
+            "void"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fe - PUT Cancel Order",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);",
+              "var canonical = request.method;",
+              "",
+              "if(!request.headers[\"content-type\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "if(!request.headers[\"content-md5\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "",
+              "for(var h in request.headers)  {",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {",
+              "        canonical += \"\\n\" + request.headers[h];",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];",
+              "    }",
+              "}",
+              "",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);",
+              "",
+              "canonical += \"\\n\" + urlParts[2];",
+              "",
+              "console.log(canonical);",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "console.log(hmac);",
+              "",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);",
+              "",
+              "console.log(base64);",
+              "",
+              "pm.environment.set(\"gibraltar-auth\", ",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");",
+              "",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 Nov 2016 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/c8ebc667-ab98-459a-9e33-19ccdf77905c/void",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "c8ebc667-ab98-459a-9e33-19ccdf77905c",
+            "void"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fe - PUT Capture Order",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);\r",
+              "var canonical = request.method;\r",
+              "\r",
+              "if(!request.headers[\"content-type\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "if(!request.headers[\"content-md5\"]){\r",
+              "    canonical += \"\\n\";\r",
+              "}\r",
+              "\r",
+              "for(var h in request.headers)  {\r",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {\r",
+              "        canonical += \"\\n\" + request.headers[h];\r",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){\r",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];\r",
+              "    }\r",
+              "}\r",
+              "\r",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);\r",
+              "\r",
+              "canonical += \"\\n\" + urlParts[2];\r",
+              "\r",
+              "console.log(canonical);\r",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));\r",
+              "\r",
+              "console.log(hmac);\r",
+              "\r",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);\r",
+              "\r",
+              "console.log(base64);\r",
+              "\r",
+              "pm.environment.set(\"gibraltar-auth\", \r",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");\r",
+              "\r",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 May 2021 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/3d52cc7a-4c24-4b8d-8714-dc3339c9985c/capture",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "3d52cc7a-4c24-4b8d-8714-dc3339c9985c",
+            "capture"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Fe - GET Order",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log(request.headers);",
+              "var canonical = request.method;",
+              "",
+              "if(!request.headers[\"content-type\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "if(!request.headers[\"content-md5\"]){",
+              "    canonical += \"\\n\";",
+              "}",
+              "",
+              "for(var h in request.headers)  {",
+              "    if(h == \"content-type\" || h == \"content-md5\" || h == \"date\") {",
+              "        canonical += \"\\n\" + request.headers[h];",
+              "    } else if (h.indexOf(\"x-uol-\") >= 0){",
+              "        canonical += \"\\n\" + h + \":\" + request.headers[h];",
+              "    }",
+              "}",
+              "",
+              "var urlParts = /^(?:\\w+\\:\\/\\/)?([^\\/]+)(.*)$/.exec(request.url);",
+              "",
+              "canonical += \"\\n\" + urlParts[2];",
+              "",
+              "console.log(canonical);",
+              "console.log(pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "var hmac = CryptoJS.HmacSHA256(canonical, pm.environment.get(\"gibraltar-secret-key\"));",
+              "",
+              "console.log(hmac);",
+              "",
+              "var base64 = CryptoJS.enc.Base64.stringify(hmac);",
+              "",
+              "console.log(base64);",
+              "",
+              "pm.environment.set(\"gibraltar-auth\", ",
+              "\"UOLWS \" + pm.environment.get(\"gibraltar-access-id\") + \":\" + base64 + \":S2:0.2\");",
+              "",
+              "console.log(pm.environment.get(\"gibraltar-auth\"));"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{gibraltar-auth}}"
+          },
+          {
+            "key": "Date",
+            "value": "Wed, 23 Nov 2016 11:20:07 GMT"
+          },
+          {
+            "key": "Merchant",
+            "value": "{{merchant}}"
+          },
+          {
+            "key": "Account",
+            "value": "{{account}}"
+          },
+          {
+            "key": "OnBehalfOfAccessId",
+            "value": "{{on-behalf-of-access-id}}"
+          }
+        ],
+        "url": {
+          "raw": "{{service_fe_url}}/upbc-service-fe/v1/order/d9c5c728-c267-4c9b-997e-51c420d707b7",
+          "host": [
+            "{{service_fe_url}}"
+          ],
+          "path": [
+            "upbc-service-fe",
+            "v1",
+            "order",
+            "d9c5c728-c267-4c9b-997e-51c420d707b7"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Status code is 200\", function () {",
+          "    pm.response.to.have.status(200);",
+          "});"
+        ]
+      }
+    }
+  ]
+}
