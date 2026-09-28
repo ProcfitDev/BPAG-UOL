@@ -1,90 +1,87 @@
-# BPAG-UOL
-# 🛒 Integração de Pagamentos BPAG (API V3)
+📚 Documentação Técnica - Integração BPAG V3 (Ultrafarma)
 
-## 📌 Visão Geral
-Este projeto contempla a atualização e integração do sistema da Procfit com o gateway de pagamentos da BPAG, com a migração da arquitetura V1 para a nova V3. O objetivo é processar pagamentos via Cartão de Crédito, Pix e Boleto, gerindo todo o ciclo de vida transacional diretamente pela base de dados e aplicação legada.
+📌 Visão Geral do Projeto
 
-## 🏗️ Arquitetura Técnica
-A camada de integração foi desenvolvida fortemente na base de dados para centralizar a geração de *payloads* e regras de criptografia.
+Esta documentação descreve o fluxo técnico e os objetos de banco de dados para a integração de pagamentos com o gateway BPAG (UOL / Getnet) na sua nova versão V3.
 
-* **Geração de Payload:** Utilização de formatação nativa JSON para a construção dinâmica dos corpos de requisição HTTP.
-* **Autenticação:** Baseada no protocolo `UOLWS`, com recurso a criptografia HMAC-SHA256 e codificação Base64.
-* **Procedimentos Principais:** * `sp_GerarAuthorizationUOL`: Gera o cabeçalho final de autorização a ser injetado no request.
-    * `sp_GerarPayloadPedidoV3`: Extrai os dados das tabelas de vendas e formata o JSON do pedido.
+A arquitetura foi desenhada de forma centralizada no banco de dados (SQL Server / T-SQL). Essa abordagem diminui o acoplamento da aplicação (ERP/Robô) com regras de formatação e criptografia pesada, centralizando a montagem do JSON (via FOR JSON PATH) e a assinatura digital (HMAC-SHA256 / UOLWS).
 
-## ⏪ Legado (Versão V1)
-O diretório `V1` contém a primeira versão da integração. Ela era baseada no envio e recebimento de payloads no formato **XML**. Abaixo um resumo das responsabilidades das Stored Procedures mantidas por histórico:
+🔄 Fluxo de Integração e Arquitetura
 
-* **Pagamento / Autorização:**
-  * `USP_BPAG_PAYORDER.sql`: Coletava dados do pedido (impostos, fretes, descontos) e montava o XML para solicitação de autorização.
-  * `USP_BPAG_PAYORDER_RETORNO.sql` (e variações): Lia o XML retornado pelo gateway para atualizar o status do pedido no banco de dados.
-* **Captura:**
-  * `USP_BPAG_CAPTURE.sql` (e variações `_RETORNO`, `_PARTIAL`, `_TOTAL`): Confirmava o pagamento junto à operadora após o faturamento/envio, suportando capturas totais ou parciais.
-* **Cancelamento e Estorno:**
-  * `USP_BPAG_CANCEL.sql` (e variações): Montava o XML para cancelar a transação ou estornar limites caso a análise de risco falhasse ou o cliente desistisse.
-* **Sincronização e Consulta (`PROBE`):**
-  * `USP_BPAG_PROBE.sql` e `USP_BPAG_PENDENTES...`: Consultavam o gateway ativamente para conciliar transações que ficaram "pendentes" (ex: falhas de rede), evitando dessincronização de status.
-* **Monitoramento e Utilitários:**
-  * `USP_BPAG_PREAUTORIZACAO_MONITOR_EMAIL.sql`: Disparava alertas de pedidos travados na pré-autorização.
-  * `USP_RETORNA_DADOS_CARTAO_BPAG.sql`: Retornava os dados mascarados para auditoria interna.
+O ecossistema é baseado na orquestração de Stored Procedures. A aplicação cliente ou o robô não precisa montar o JSON nem calcular hashes de segurança. O fluxo de disparo funciona da seguinte maneira:
 
-## 🔐 Autenticação e Credenciais (Ambiente Sandbox)
-Atualmente, a API exige a assinatura via cabeçalho `Authorization`. 
-> ⚠️ **Nota:** Está previsto no roadmap da BPAG a atualização para o padrão OAuth 2.0. Quando disponibilizado, o módulo de autenticação deverá ser refatorado.
+O Robô/ERP informa o número da Pré-venda/Pedido.
 
-**Dados de Homologação (Sandbox):**
-* **Base URL:** `https://sandbox-psp.bpag.com.br`
-* **Merchant ID / Account ID:** `ultrafarma-hml`
-* **Access ID / Public Key:** `c23ad060dc0aa175d64c8731296486a7`
-* **Secret Key (Assinatura):** `PNMD7f2PjkGXntUXrYhGcOvBJJACsOSKPIdcJTPbHn0=`
+O banco de dados monta o payload JSON e os cabeçalhos de autenticação.
 
-**Cabeçalhos Obrigatórios:**
-* `Merchant`: Identificação do lojista (ex: `ultrafarma-hml`)
-* `Account`: Conta (ex: `ultrafarma-hml`)
-* `Date`: Data no formato `EEE, d MMM yyyy HH:mm:ss z` (GMT)
-* `Authorization`: `UOLWS access-id:signature:hmac-algorithm:protocol-version`
+O banco de dados realiza o disparo HTTP REST para a API BPAG V3.
 
-## 🚀 Endpoints Principais
-A documentação completa dos contratos (Swagger) define os seguintes fluxos transacionais:
+O retorno é processado automaticamente e o status financeiro é atualizado nas tabelas de fila.
 
-* **Criar Pedido (Transação):** `POST /upbc-service-fe/v1/order/purchase`
-    * *Payload exigido:* `amount` (em cêntimos), `payments` (array com dados do cartão/pix), `reference` (ID interno), `requestDate` e `details` (dados do cliente).
-* **Captura Posterior (Cartão):** `PUT /upbc-service-fe/v1/order/{orderId}/capture`
-* **Cancelamento/Estorno:** `PUT /upbc-service-fe/v1/order/{orderId}/void`
-* **Consulta de Pedido:** `GET /upbc-service-fe/v1/order/{orderId}`
+🛠️ Procedures Envolvidas na Integração
 
-## 🔄 Tratamento de Retornos
-O sistema deve interpretar os códigos HTTP da BPAG para validar a comunicação:
-* `200 OK` / `201 Created`: Sucesso na requisição.
-* `400 Bad Request`: Payload inválido ou erro de validação.
-* `401 / 403`: Falha na autenticação/assinatura HMAC.
-* `500 Internal Server Error`: Erro no gateway.
+Abaixo estão listadas as principais procedures que compõem o motor da integração BPAG V3.
 
-**Avaliação de Pagamento (Nó `transactions`):**
-A resposta de sucesso (`200 OK`) não garante o pagamento aprovado. É obrigatório ler o array `transactions` dentro da resposta e avaliar o campo `status`:
-* ✅ **Aprovado:** Status `PRE_AUTHORIZED` ou `PAID`. (Normalized: `PROCESSED_AUTHORIZED`).
-* ❌ **Recusado:** Status `REJECTED`. (Normalized: `PROCESSED_REJECT`). O motivo do erro virá no campo `rawMessage`.
+1. sp_ProcessarPedidoBPAG_V3 (A Procedure Principal/Orquestradora)
 
-## 🧪 Massa de Dados para Testes (QA)
-Os cartões de crédito para o ambiente de *Sandbox* são fornecidos pela adquirente **Getnet**. 
+Esta é a única procedure que o robô/desenvolvedor precisa chamar ativamente para realizar a transação de ponta a ponta.
 
-**Regras para simulação:**
-1.  **Aprovação:** Utilizar um dos PANs de teste válidos. A **data de vencimento (expDate)** deve, obrigatoriamente, ser uma data futura válida (ex: `2029-12`).
-2.  **Recusa por Vencimento:** Utilizar um PAN válido, mas informar uma data de vencimento expirada/inválida.
-3.  **Recusa por Cartão Inválido:** Utilizar qualquer PAN fora do padrão fornecido (exemplo: `4111111111111111`).
+O que ela faz: Consulta as credenciais na tabela PARAMETROS_BPAG_V3, resgata o payload JSON estruturado, gera o header de autorização, dispara a requisição HTTP (POST) para a BPAG e chama a procedure de retorno para atualizar o status.
 
-**Cartões de Teste Principais:**
-* **Mastercard:** `5447318879391031` | CVV: `528` 
-* **Visa:** `4220612154786956` | CVV: `083` 
-* **Amex:** `376442058032004` | CVV: `1589`
-* **Elo:** `5067230000009011` | CVV: `568`
-* **Hipercard:** `6370950924782803` | CVV: `832`
+Parâmetros de Entrada:
 
-## 🛠️ Manutenção e Tarefas (Roadmap)
-* [x] Implementação da criptografia HMAC-SHA256.
-* [x] Estruturação do procedimento de Autenticação (`sp_GerarAuthorizationUOL`).
-* [ ] Desenvolvimento do procedimento de Payload (`sp_GerarPayloadPedidoV3`).
-* [ ] Rotina de expurgo de Registo de Logs (Limpeza de tabelas de requisição com mais de 15 dias).
-* [ ] Refatoração da Aplicação Principal (Remoção de código fixo legado).
-* [ ] Configuração de Webhooks para conciliação assíncrona.
-* [ ] Operação Assistida (Hypercare) pós Go-Live.
+@PREVENDA NUMERIC(15): O identificador único da pré-venda/pedido no ERP.
+
+Retorno: Retorna um result set com o status HTTP da requisição e a mensagem de retorno da adquirente.
+
+2. sp_GerarPayloadPedidoV3 (Uso Interno/Geração de Dados)
+
+O que ela faz: Extrai os dados das tabelas de vendas e monta dinamicamente o corpo da requisição transacional (blocos details, customers, products, payments, etc.) garantindo a formatação correta e eliminando caracteres de escape indevidos.
+
+3. sp_GerarAuthorizationUOL (Uso Interno/Segurança)
+
+O que ela faz: Gera o cabeçalho final de autorização (padrão UOLWS) que será injetado no request. Utiliza criptografia HMAC-SHA256 e conversão em Base64 nativas do banco (fn_HMAC_SHA256, fn_UOLAuthorization, etc).
+
+4. sp_ProcessarRetornoPedidoV3 (Uso Interno/Conciliação)
+
+O que ela faz: Recebe o retorno JSON bruto da adquirente, faz o parse utilizando JSON_VALUE e atualiza o status financeiro da venda (Aprovado, Recusado, etc.) nas tabelas de fila (PREVENDAS_BPAG_PAYORDER, etc.).
+
+🚀 Como Integrar o Robô (Chamada para os Devs)
+
+Para a equipe de desenvolvimento que está construindo o robô de processamento ou a rotina do ERP, a integração é simplificada. Basta injetar o bloco de código abaixo no fluxo da aplicação no momento em que a transação financeira precisar ser autorizada/processada pela BPAG.
+
+💻 Snippet de Chamada do Robô
+
+-- ==============================================================================
+-- CHAMA A INTEGRAÇÃO BPAG V3 (AUTORIZAÇÃO / COMPRA)
+-- O robô deve passar apenas o número da pré-venda. O banco cuida do resto.
+-- ==============================================================================
+
+DECLARE @IdPrevenda NUMERIC(15) = [INSERIR_VARIAVEL_DO_ROBO_AQUI];
+DECLARE @Retorno INT;
+
+-- Executa a orquestração completa da transação
+EXEC @Retorno = dbo.sp_ProcessarPedidoBPAG_V3 
+    @PREVENDA = @IdPrevenda;
+
+-- Opcional: O desenvolvedor pode ler o Result Set retornado pela procedure 
+-- para logar o HttpStatus e StatusTransacao na aplicação (ex: PRE_AUTHORIZED, REJECTED).
+
+
+📋 O que os Desenvolvedores precisam garantir antes de chamar:
+
+Dados Íntegros: A pré-venda já deve estar devidamente gravada nas tabelas de origem (PDV_PREVENDAS, clientes, produtos, etc.) para que a sp_GerarPayloadPedidoV3 consiga montar o JSON sem falhas.
+
+Ambiente Parametrizado: A tabela PARAMETROS_BPAG_V3 deve estar populada com as credenciais corretas do ambiente (Sandbox ou Produção), incluindo URL_BASE, MERCHANT, ACCOUNT, ACCESS_ID e SECRET_KEY.
+
+🚦 Tabela de Status Esperados (Retorno BPAG)
+
+Ao processar a resposta, o ecossistema avalia o nó transactions do JSON devolvido pela BPAG. O desenvolvedor/robô pode esperar os seguintes status principais:
+
+PRE_AUTHORIZED: Transação autorizada com sucesso (Reserva de limite/saldo).
+
+PAID: Transação paga (comum em fluxos de PIX).
+
+REJECTED: Transação recusada. O motivo detalhado estará no campo rawMessage.
+
+Qualquer erro de comunicação HTTP (ex: 400 Bad Request, 403 Forbidden) será tratado e logado pela própria procedure para facilitar o troubleshooting.
